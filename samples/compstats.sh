@@ -5,11 +5,12 @@ function space2csv {
 }
 
 function genStats {
-  STAT="`vmstat`"
-  echo hostname,timestamp,`echo "$STAT" | tail -n 2 | head -n 1 | space2csv`
+  local DATE="`date +%s%3N`"
+  local STATS="`vmstat`"
+  echo hostname,timestamp,`echo "$STATS" | tail -n 2 | head -n 1 | space2csv`
   while true; do
-    STAT="`vmstat`"
-    echo `hostname`,`date +%s%3N`,`echo "$STAT" | tail -n 1 | space2csv`
+    STATS="`vmstat`"
+    echo $HOSTNAME,$DATE,`echo "$STATS" | tail -n 1 | space2csv`
     sleep 1
   done
 }
