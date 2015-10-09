@@ -7,6 +7,7 @@ import sys
 
 os.sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../lib')))
 
+from valueMeta import valueMetaFactory
 from thirdParty.pydocs.unicode_csv import unicode_csv_reader
 from thirdParty.python_java_datastream.data_output_stream import DataOutputStream
 from thirdParty.python_java_datastream.data_input_stream import DataInputStream
@@ -19,18 +20,6 @@ ROW = 2
 # OutputControlCode
 SUCCESS = 0
 ERROR = 1
-
-# ValueMetaInterface types
-TYPE_STRING = 2
-TYPE_INTEGER = 5
-
-typeDict = { 'int' : TYPE_INTEGER, 'string': TYPE_STRING }
-
-# ValueMetaInterface storage types
-TYPE_NORMAL = 0
-
-# ValueMetaInterface trim types
-TRIM_TYPE_NONE = 0
 
 def writeString(dataOutputStream, string):
   #print('Writing: ' + string)
@@ -58,53 +47,28 @@ if __name__ == '__main__':
   colTypeDict = {}
   if args.colTypes:
     for colType in args.colTypes.split(','):
-      colTypeDict[colType.split(':')[0]] = typeDict[colType.split(':')[1]]
-
+      colTypeDict[colType.split(':')[0]] = colType.split(':')[1]
 
   first = True
+  valueMetas = []
   for row in reader:
     if first:
       first = False
-      #print('Writing header row: ' + str(row))
-      dataOutputStream.write_byte(ROW_META)
-      dataOutputStream.write_int(len(row))
-      colTypes = []
       for val in row:
         if val in colTypeDict:
-          colType = colTypeDict[val]
+          valueMetas.append(valueMetaFactory.create(colTypeDict[val], val))
         else:
-          colType = typeDict[args.defaultType]
-        colTypes.append(colType)
-        dataOutputStream.write_int(colType) # Type
-        dataOutputStream.write_int(TYPE_NORMAL) # Storage type
-        writeString(dataOutputStream, val) # Name
-        dataOutputStream.write_int(-1) # length
-        dataOutputStream.write_int(-1) # precision
-        writeString(dataOutputStream,'From Python') # origin
-        writeString(dataOutputStream,'') # comments
-        writeString(dataOutputStream,'') # conversion mask
-        writeString(dataOutputStream,'.') # decimal symbol
-        writeString(dataOutputStream,',') # grouping symbol
-        writeString(dataOutputStream,'$') # currency symbol
-        dataOutputStream.write_int(TRIM_TYPE_NONE) # trim type
-        dataOutputStream.write_boolean(False) # case insensitive
-        dataOutputStream.write_boolean(False) # sorted descending
-        dataOutputStream.write_boolean(False) # output padding enabled
-        dataOutputStream.write_boolean(False) # date format lenient
-        writeString(dataOutputStream,'') # date format locale
-        writeString(dataOutputStream,'') # date format time zone
-        dataOutputStream.write_boolean(False) # lenient string to number
-        socketFile.flush()
+          valueMetas.append(valueMetaFactory.create(args.defaultType, val))
+      dataOutputStream.write_byte(ROW_META)
+      dataOutputStream.write_int(len(valueMetas))
+      for valueMeta in valueMetas:
+        valueMeta.writeMeta(dataOutputStream)
+      socketFile.flush()
     else:
-      #print('Writing row: ' + str(row))
       dataOutputStream.write_byte(ROW)
       for idx, val in enumerate(row):
-        dataOutputStream.write_boolean(False) # Null value
-        if colTypes[idx] == TYPE_INTEGER:
-          dataOutputStream.write_long(long(val))
-        else:
-          writeString(dataOutputStream,val) # Value
-        socketFile.flush()
+        valueMetas[idx].writeObject(dataOutputStream, val)
+      socketFile.flush()
   
   dataOutputStream.write_byte(STOP)
   socketFile.flush()
