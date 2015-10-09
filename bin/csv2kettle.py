@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import argparse
 import os
@@ -7,6 +7,7 @@ import sys
 
 os.sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../lib')))
 
+from rowMeta import RowMeta
 from valueMeta import valueMetaFactory
 from thirdParty.pydocs.unicode_csv import unicode_csv_reader
 from thirdParty.python_java_datastream.data_output_stream import DataOutputStream
@@ -14,19 +15,10 @@ from thirdParty.python_java_datastream.data_input_stream import DataInputStream
 
 # InputControlCode
 STOP = 0
-ROW_META = 1
-ROW = 2
 
 # OutputControlCode
 SUCCESS = 0
 ERROR = 1
-
-def writeString(dataOutputStream, string):
-  #print('Writing: ' + string)
-  chars = string.encode('utf-8')
-  dataOutputStream.write_int(len(chars))
-  for char in chars:
-    dataOutputStream.write_byte(ord(char))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='This script will send rows to a Kettle Transformation', usage='stream2kettle [options]', formatter_class = argparse.ArgumentDefaultsHelpFormatter)
@@ -50,24 +42,20 @@ if __name__ == '__main__':
       colTypeDict[colType.split(':')[0]] = colType.split(':')[1]
 
   first = True
-  valueMetas = []
   for row in reader:
     if first:
       first = False
+      valueMetas = []
       for val in row:
         if val in colTypeDict:
           valueMetas.append(valueMetaFactory.create(colTypeDict[val], val))
         else:
           valueMetas.append(valueMetaFactory.create(args.defaultType, val))
-      dataOutputStream.write_byte(ROW_META)
-      dataOutputStream.write_int(len(valueMetas))
-      for valueMeta in valueMetas:
-        valueMeta.writeMeta(dataOutputStream)
+      rowMeta = RowMeta(valueMetas)
+      rowMeta.writeMeta(dataOutputStream)
       socketFile.flush()
     else:
-      dataOutputStream.write_byte(ROW)
-      for idx, val in enumerate(row):
-        valueMetas[idx].writeObject(dataOutputStream, val)
+      rowMeta.writeRow(dataOutputStream, row)
       socketFile.flush()
   
   dataOutputStream.write_byte(STOP)
