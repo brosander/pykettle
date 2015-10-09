@@ -1,14 +1,5 @@
 #!/usr/bin/env python
 
-# InputControlCode
-STOP = 0
-ROW_META = 1
-ROW = 2
-
-# OutputControlCode
-SUCCESS = 0
-ERROR = 1
-
 # ValueMetaInterface types
 TYPE_STRING = 2
 TYPE_INTEGER = 5
