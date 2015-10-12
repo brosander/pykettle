@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 
 # ValueMetaInterface types
+TYPE_NUMBER = 1
 TYPE_STRING = 2
+TYPE_DATE = 3
+TYPE_BOOLEAN = 4
 TYPE_INTEGER = 5
+TYPE_BIGNUMBER = 6
+TYPE_BINARY = 8
 
 # ValueMetaInterface storage types
 TYPE_NORMAL = 0
@@ -75,6 +80,35 @@ class ValueMetaBase(object):
       output.write_boolean(False) # Null value
       self._writeObjectImpl(output, val)
       
+class ValueMetaNumber(ValueMetaBase):
+  def __init__(self, name):
+    super(ValueMetaNumber, self).__init__(TYPE_NUMBER, name)
+
+  def _writeObjectImpl(self, output, val):
+    output.write_double(output, float(val))
+
+class ValueMetaString(ValueMetaBase):
+  def __init__(self, name):
+    super(ValueMetaString, self).__init__(TYPE_STRING, name)
+
+  def _writeObjectImpl(self, output, val):
+    self.writeString(output, str(val))
+
+#Expects to write object as milliseconds since epoch (long)
+class ValueMetaDate(ValueMetaBase):
+  def __init__(self, name):
+    super(ValueMetaDate, self).__init__(TYPE_DATE, name)
+
+  def _writeObjectImpl(self, output, val):
+    output.write_long(output, long(val))
+
+class ValueMetaBoolean(ValueMetaBase):
+  def __init__(self, name):
+    super(ValueMetaBoolean, self).__init__(TYPE_BOOLEAN, name)
+
+  def _writeObjectImpl(self, output, val):
+    output.write_boolean(output, True if val else False)
+
 class ValueMetaInteger(ValueMetaBase):
   def __init__(self, name):
     super(ValueMetaInteger, self).__init__(TYPE_INTEGER, name)
@@ -82,17 +116,47 @@ class ValueMetaInteger(ValueMetaBase):
   def _writeObjectImpl(self, output, val):
     output.write_long(long(val))
 
-class ValueMetaString(ValueMetaBase):
+#Serializes number of arbitrary size, precision as string to be used in Java's BigDecimal constructor
+class ValueMetaBigNumber(ValueMetaBase):
   def __init__(self, name):
-    super(ValueMetaString, self).__init__(TYPE_STRING, name)
+    super(ValueMetaBigNumber, self).__init__(TYPE_BIGNUMBER, name)
 
   def _writeObjectImpl(self, output, val):
-    self.writeString(output, val)
+   self.writeString(str(val))
+
+#Writes byte array
+class ValueMetaBinary(ValueMetaBase):
+  def __init__(self, name):
+    super(ValueMetaBinary, self).__init__(TYPE_BINARY, name)
+
+  def _writeObjectImpl(self, output, val):
+    output.write_int(len(val))
+    for byte in val:
+      output.write_byte(byte)
+
+valueMetaFactory.factories[TYPE_NUMBER] = lambda name: ValueMetaNumber(name)
+valueMetaFactory.factories['number'] = valueMetaFactory.factories[TYPE_NUMBER]
+valueMetaFactory.factories['num'] = valueMetaFactory.factories[TYPE_NUMBER]
+
+valueMetaFactory.factories[TYPE_STRING] = lambda name: ValueMetaString(name)
+valueMetaFactory.factories['string'] = valueMetaFactory.factories[TYPE_STRING]
+valueMetaFactory.factories['str'] = valueMetaFactory.factories[TYPE_STRING]
+
+valueMetaFactory.factories[TYPE_DATE] = lambda name: ValueMetaDate(name)
+valueMetaFactory.factories['date'] = valueMetaFactory.factories[TYPE_DATE]
+
+valueMetaFactory.factories[TYPE_BOOLEAN] = lambda name: ValueMetaBoolean(name)
+valueMetaFactory.factories['boolean'] = valueMetaFactory.factories[TYPE_BOOLEAN]
+valueMetaFactory.factories['bool'] = valueMetaFactory.factories[TYPE_BOOLEAN]
 
 valueMetaFactory.factories[TYPE_INTEGER] = lambda name: ValueMetaInteger(name)
 valueMetaFactory.factories['integer'] = valueMetaFactory.factories[TYPE_INTEGER]
 valueMetaFactory.factories['int'] = valueMetaFactory.factories[TYPE_INTEGER]
 
-valueMetaFactory.factories[TYPE_STRING] = lambda name: ValueMetaString(name)
-valueMetaFactory.factories['string'] = valueMetaFactory.factories[TYPE_STRING]
-valueMetaFactory.factories['str'] = valueMetaFactory.factories[TYPE_STRING]
+valueMetaFactory.factories[TYPE_BIGNUMBER] = lambda name: ValueMetaBigNumber(name)
+valueMetaFactory.factories['bigNumber'] = valueMetaFactory.factories[TYPE_BIGNUMBER]
+valueMetaFactory.factories['bigNum'] = valueMetaFactory.factories[TYPE_BIGNUMBER]
+
+valueMetaFactory.factories[TYPE_BINARY] = lambda name: ValueMetaBinary(name)
+valueMetaFactory.factories['binary'] = valueMetaFactory.factories[TYPE_BINARY]
+valueMetaFactory.factories['bin'] = valueMetaFactory.factories[TYPE_BINARY]
